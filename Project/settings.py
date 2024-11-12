@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Management',
+    'apps.Management',
     'bootstrap5',
 ]
 
@@ -94,10 +94,6 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-            # os.path.join(BASE_DIR, 'Management/../templates/base'),
-            # os.path.join(BASE_DIR, 'Management/../templates/recepcionist'),
-            # os.path.join(BASE_DIR, 'Management/../templates/customers'),
-            # os.path.join(BASE_DIR, 'Management/templatestags')
             os.path.join(BASE_DIR, 'templates')
         ],
         'APP_DIRS': True,
@@ -157,8 +153,8 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-AUTH_GROUP_MODEL_CUSTOMER = 'Management.Customer'
-AUTH_GROUP_MODEL_RECEPCIONIST = 'Management.Recepcionist'
+AUTH_GROUP_MODEL_CUSTOMER = 'apps.Management.Customer'
+AUTH_GROUP_MODEL_RECEPCIONIST = 'apps.Management.Recepcionist'
 # Para desarrollo, puede ser True en producción
 # SESSION_COOKIE_SECURE = False  
 SESSION_COOKIE_SECURE = True  

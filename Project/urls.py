@@ -21,13 +21,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 # from Management.views import signin
-from Management import views
-from Management import api
+from apps.Management.views import IndexView, SignupView, SigninView, SignoutView
+from apps.Management import views
+from apps.Management import api
 # from Management.api import obtener_marcas_y_modelos, VehicleDataAPIView
 
 urlpatterns = [
     path('admin/', admin.site.urls, name="administration"),
-    path('', views.index , name='index' ),
+    path('', IndexView.as_view() , name='index' ),
 
     path('api/', api.api_vehicles , name='vehicles' ),
     path('api/brands/', api.get_brands , name='brands' ),
@@ -37,9 +38,9 @@ urlpatterns = [
 
 
     # URLS LOGIN
-    path('signin/', views.signin , name='signin' ),
-    path('signup/', views.signup , name='signup' ),
-    path('signout/', views.signout , name='signout' ),
+    path('signin/', SigninView.as_view(), name='signin' ),
+    path('signup/', SignupView.as_view(), name='signup' ),
+    path('signout/', SignoutView.as_view(), name='signout' ),
 
     # URLS CLIENTES 
     path('user_data/', views.list_user_data , name='user_data'),

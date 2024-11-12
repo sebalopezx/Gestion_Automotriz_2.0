@@ -3,8 +3,8 @@ from django.apps import AppConfig
 
 class ManagementConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'Management'
+    name = 'apps.Management'
 
     def ready(self):
-        import Management.signals
+        import apps.Management.signals
         import Project.signals

@@ -4,7 +4,7 @@ from django.db.models.signals import post_migrate
 from django.dispatch import receiver
 from django.utils import timezone
 
-from Management.models import Appointment, Attention, Checklist, Coupon, Description, Job, Mechanic, Point, Service, TitleHeader, Vehicle, VehicleStatus, Work, Workshop
+from apps.Management.models import Appointment, Attention, Checklist, Coupon, Description, Job, Mechanic, Point, Service, TitleHeader, Vehicle, VehicleStatus, Work, Workshop
 
 
 """ First data for de application """
@@ -181,7 +181,7 @@ def create_status(sender, **kwargs):
 @receiver(post_migrate)
 def create_title_headers(sender, **kwargs):
     titles_data = [
-        {'id': 1, "title": "INDEX"},
+        {'id': 1, "title": "HOME"},
         {'id': 2, "title": "Bienvenido"},
         {'id': 3, "title": "Aplicación de gestión de citas"},
     ]

@@ -78,7 +78,7 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('description_job', models.TextField(blank=True, null=True, verbose_name='Descripción trabajo')),
-                ('appointment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Management.appointment', verbose_name='Id_Cita')),
+                ('appointment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='apps.Management.appointment', verbose_name='Id_Cita')),
             ],
             options={
                 'verbose_name': 'Trabajo',
@@ -160,8 +160,8 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('status_service', models.BooleanField(default=False, verbose_name='Estado de servicio')),
-                ('job', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Management.job', verbose_name='Id_Trabajo')),
-                ('service', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Management.service', verbose_name='Id_Servicio')),
+                ('job', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='apps.Management.job', verbose_name='Id_Trabajo')),
+                ('service', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='apps.Management.service', verbose_name='Id_Servicio')),
             ],
             options={
                 'verbose_name': 'Servicio por trabajo',
@@ -202,7 +202,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='job',
             name='status',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Management.vehiclestatus', verbose_name='Id_Estado'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='apps.Management.vehiclestatus', verbose_name='Id_Estado'),
         ),
         migrations.CreateModel(
             name='Coupon',
@@ -233,7 +233,7 @@ class Migration(migrations.Migration):
                 ('triangles', models.BooleanField(default=False, verbose_name='Triángulos')),
                 ('hydraulic_jack', models.BooleanField(default=False, verbose_name='Gato hidráulico')),
                 ('spare_wheel', models.BooleanField(default=False, verbose_name='Rueda repuesto')),
-                ('job', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='Management.job', verbose_name='Id_Trabajo')),
+                ('job', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, to='apps.Management.job', verbose_name='Id_Trabajo')),
             ],
             options={
                 'verbose_name': 'Checklist',
@@ -244,21 +244,21 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='appointment',
             name='attention',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Management.attention', verbose_name='Atención'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='apps.Management.attention', verbose_name='Atención'),
         ),
         migrations.AddField(
             model_name='appointment',
             name='mechanic',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='Management.mechanic', verbose_name='Mecánico'),
+            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='apps.Management.mechanic', verbose_name='Mecánico'),
         ),
         migrations.AddField(
             model_name='appointment',
             name='vehicle',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='Management.vehicle', verbose_name='Data vehículo'),
+            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to='apps.Management.vehicle', verbose_name='Data vehículo'),
         ),
         migrations.AddField(
             model_name='appointment',
             name='workshop',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='Management.workshop', verbose_name='Sucursal'),
+            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='apps.Management.workshop', verbose_name='Sucursal'),
         ),
     ]

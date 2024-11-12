@@ -3,6 +3,7 @@ import os
 from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse, reverse_lazy
+from django.views import View
 # Manejo de mensajes de errores
 from django.contrib import messages
 # Creacion de usuario mediante django
@@ -16,8 +17,9 @@ from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 # Decoradores para login y otros
 from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
 
-from Management.api import api_vehicles
+from apps.Management.api import api_vehicles
 from templatetags.decorators import customer_required, recepcionist_required, is_admin, is_customer, is_recepcionist
 # from .templatetags.decorators import *
 
@@ -68,26 +70,44 @@ def template_base(user_type):
 
 
 # VIEWS INDEX
-
-def index(request):
-    user_type_value = user_type(request.user)
-    base_template = template_base(user_type_value)
-    index_title = TitleHeader.objects.all()
-    index_description = Description.objects.all()
-    return render(request, 'base/index.html',{
-        'base_template':base_template,
-        'POINTS':POINTS_VALUE,
-        'index_title':index_title,
-        'index_description':index_description
+class IndexView(View):
+    def get(self, request):
+        user_type_value = user_type(request.user)
+        base_template = template_base(user_type_value)
+        index_title = TitleHeader.objects.all()
+        index_description = Description.objects.all()
+        return render(request, 'base/index.html',{
+            'base_template':base_template,
+            'POINTS':POINTS_VALUE,
+            'index_title':index_title,
+            'index_description':index_description
     })
+
+# def index(request):
+#     user_type_value = user_type(request.user)
+#     base_template = template_base(user_type_value)
+#     index_title = TitleHeader.objects.all()
+#     index_description = Description.objects.all()
+#     return render(request, 'base/index.html',{
+#         'base_template':base_template,
+#         'POINTS':POINTS_VALUE,
+#         'index_title':index_title,
+#         'index_description':index_description
+#     })
 
 
 # VIEWS LOGIN 
 from django.contrib.auth.views import LoginView
 
-
-def signup(request):
-    if request.method == 'POST':
+class SignupView(View):
+    def get(self, request):
+        form_register = CustomUserCreationForm()
+    
+        return render(request, 'base/login/signup.html', {
+            'form_register': form_register
+            })
+    
+    def post(self, request):
         form_register = CustomUserCreationForm(request.POST)
         if form_register.is_valid():
             user = form_register.save()
@@ -103,21 +123,43 @@ def signup(request):
             return redirect('base/signin') 
         else:
             messages.error(request, 'Error al registrar usuario')
-    else:
-        form_register = CustomUserCreationForm()
+
+        return render(request, 'base/login/signup.html', {
+            'form_register': form_register
+            })
+        
+# def signup(request):
+#     if request.method == 'POST':
+#         form_register = CustomUserCreationForm(request.POST)
+#         if form_register.is_valid():
+#             user = form_register.save()
+#             messages.success(request, 'Usuario registrado con éxito')
+
+#             # Asigna el usuario al grupo "Clientes"
+#             customer_group = Group.objects.get(name='Customer')
+#             customer_group.user_set.add(user)
+
+#             # Inicializar sistema de puntos para el cliente
+#             points = Point.objects.create(customer=user)
+#             points.save()
+#             return redirect('base/signin') 
+#         else:
+#             messages.error(request, 'Error al registrar usuario')
+#     else:
+#         form_register = CustomUserCreationForm()
     
-    return render(request, 'base/login/signup.html', {
-        'form_register': form_register
-        })
+#     return render(request, 'base/login/signup.html', {
+#         'form_register': form_register
+#         })
 
 
-def signin(request):
-    if request.method == 'GET':
+class SigninView(View):
+    def get(self, request):
         return render(request, 'base/login/signin.html', {
             'form_login':AuthenticationForm()
         })
-    else:
-        # Validar usuario logeado
+    
+    def post(self, request):
         user = authenticate(request, 
             username=request.POST['username'],
             password=request.POST['password']
@@ -145,12 +187,52 @@ def signin(request):
             else:
                 return redirect('index')
 
+# def signin(request):
+#     if request.method == 'GET':
+#         return render(request, 'base/login/signin.html', {
+#             'form_login':AuthenticationForm()
+#         })
+#     else:
+#         # Validar usuario logeado
+#         user = authenticate(request, 
+#             username=request.POST['username'],
+#             password=request.POST['password']
+#         )
+#         if user is None:
+#             return render(request, 'base/login/signin.html', {
+#                 'form_login':AuthenticationForm(),
+#                 'error':'Usuario o Contraseña inválidos.'
+#             })
+#         else:
+#             # Crea la cookie con fecha de expiracion en 0 para cerrar sesión al cerrar navegador
+#             login(request, user)
+#             request.session.set_expiry(0)
+#             print(f"Is Customer: {is_customer(request.user)}")
+#             print(f"Is Recepcionist: {is_recepcionist(request.user)}")
+#             print(f"Is Admin: {is_admin(request.user)}")
+
+#             # Redirección según grupo asociado 
+#             if is_customer(request.user): # request.user.groups.filter(name='Customer').exists():
+#                 return redirect('user_data')
+#             elif is_recepcionist(request.user): # request.user.groups.filter(name='Recepcionist').exists():
+#                 return redirect('list_jobs_diary')
+#             elif is_admin(request.user):
+#                 return redirect('admin:index')
+#             else:
+#                 return redirect('index')
 
 
-@login_required
-def signout(request):
-    logout(request)
-    return redirect('index')
+class SignoutView(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        logout(request)
+        return redirect('index')
+    
+
+# @login_required
+# def signout(request):
+#     logout(request)
+#     return redirect('index')
 
 
 

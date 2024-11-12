@@ -1,5 +1,5 @@
 from django.test import TestCase
-from Management.models import *
+from apps.Management.models import *
 from django.contrib.auth.models import User
 from django.utils import timezone
 import datetime
