@@ -992,6 +992,33 @@ class CancelAppointmentView(View):
 
 # VIEWS RECEPCIONIST
 
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class RegisterRecepcionistView(View):
+    template_name = 'register_recepcionist.html'
+    form_class = CustomUserCreationForm
+
+    def get(self, request):
+        form_register = self.form_class()
+        return render(request, self.template_name, {'form_register': form_register})
+    
+    def post(self, request):
+        form_register = self.form_class(request.POST)
+        if form_register.is_valid():
+            user = form_register.save(commit=False)
+            
+            # Asigna el usuario al grupo "Recepcionistas" y establece el estado de staff
+            recepcionist_group = Group.objects.get(name='Recepcionist')
+            recepcionist_group.user_set.add(user)
+            user.is_staff = True
+            user.save()
+
+            messages.success(request, 'Usuario registrado con éxito')
+            return redirect('register_recepcionist')
+        else:
+            messages.error(request, 'Error al registrar recepcionista')
+
+        return render(request, self.template_name, {'form_register': form_register})
+    
 # @recepcionist_required
 # def register_recepcionist(request):
 #     if request.method == 'POST':
@@ -1017,45 +1044,98 @@ class CancelAppointmentView(View):
 #         })
 
 
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class ListMechanicView(View):
+    template_name = 'recepcionist/mechanic/list_mechanic.html'
+
+    def get(self, request):
+        mechanics = Mechanic.objects.all()
+        error = 'No existen Mecánicos' if not mechanics.exists() else None
+
+        context = {
+            'list_mechanic': mechanics,
+            'error': error
+        }
+        return render(request, self.template_name, context)
+
+# @login_required
+# @recepcionist_required
+# def list_mechanic(request):
+#     mechanic = Mechanic.objects.all()
+#     error =  'No existen Mecánicos'   
+#     return render(request, 'recepcionist/mechanic/list_mechanic.html', {
+#         'list_mechanic':mechanic,
+#         'error':error
+#     })
 
 
-@login_required
-@recepcionist_required
-def list_mechanic(request):
-    mechanic = Mechanic.objects.all()
-    error =  'No existen Mecánicos'   
-    return render(request, 'recepcionist/mechanic/list_mechanic.html', {
-        'list_mechanic':mechanic,
-        'error':error
-    })
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class RegisterMechanicView(View):
+    template_name = 'recepcionist/mechanic/register_mechanic.html'
+    form_class = MechanicForm
 
-@login_required
-@recepcionist_required
-def register_mechanic(request):
-    if request.method == 'POST':
-        form_mechanic = MechanicForm(request.POST, request.FILES)
+    def get(self, request):
+        form_mechanic = self.form_class()
+        return render(request, self.template_name, {'form_mechanic': form_mechanic})
+    
+    def post(self, request):
+        form_mechanic = self.form_class(request.POST, request.FILES)
         try:
             if form_mechanic.is_valid():
                 form_mechanic.save()
                 messages.success(request, 'Mecánico agregado exitosamente.')
                 return redirect('list_mechanic')
+            else:
+                messages.error(request, 'Error al registrar mecánico.')
+        except Exception:
+            messages.error(request, 'Error al registrar mecánico.')
 
-        except:
-             messages.error(request, 'Error al registrar mecánico.')
-    else:
-        form_mechanic = MechanicForm()
+        return render(request, self.template_name, {'form_mechanic': form_mechanic})
+
+# @login_required
+# @recepcionist_required
+# def register_mechanic(request):
+#     if request.method == 'POST':
+#         form_mechanic = MechanicForm(request.POST, request.FILES)
+#         try:
+#             if form_mechanic.is_valid():
+#                 form_mechanic.save()
+#                 messages.success(request, 'Mecánico agregado exitosamente.')
+#                 return redirect('list_mechanic')
+
+#         except:
+#              messages.error(request, 'Error al registrar mecánico.')
+#     else:
+#         form_mechanic = MechanicForm()
         
-    return render(request, 'recepcionist/mechanic/register_mechanic.html', {
-        'form_mechanic': form_mechanic
-    })
+#     return render(request, 'recepcionist/mechanic/register_mechanic.html', {
+#         'form_mechanic': form_mechanic
+#     })
 
 
-@login_required
-@recepcionist_required
-def update_mechanic(request, id):
-    if request.method == 'POST':
-        mechanic = get_object_or_404(Mechanic, pk=id)
-        form_update = MechanicForm(request.POST, request.FILES, instance=mechanic)
+
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class UpdateMechanicView(View):
+    template_name = 'recepcionist/mechanic/update_mechanic.html'
+    form_class = MechanicForm
+
+    def get_object(self, id):
+        return get_object_or_404(Mechanic, pk=id)
+
+    def get(self, request, id):
+        mechanic = self.get_object(id)
+        form_update = self.form_class(instance=mechanic)
+        
+        context = {
+            'data_mechanic': mechanic,
+            'form_update': form_update
+        }
+        return render(request, self.template_name, context)
+    
+    def post(self, request, id):
+        mechanic = self.get_object(id)
+        form_update = self.form_class(request.POST, request.FILES, instance=mechanic)
+        
         try:   
             if form_update.is_valid():
                 form_update.save()
@@ -1063,35 +1143,76 @@ def update_mechanic(request, id):
                 return redirect('list_mechanic')
             else:
                 messages.error(request, "Error al actualizar mecánico.")
-        except ValidationError as e:
+        except ValidationError:
             messages.error(request, 'Error de ejecución')
-    else:
-        mechanic = get_object_or_404(Mechanic, pk=id)
-        form_update = MechanicForm(instance=mechanic)
 
-    return render(request, 'recepcionist/mechanic/update_mechanic.html', {
+        context = {
             'data_mechanic': mechanic,
-            'form_update': form_update,
-        })
+            'form_update': form_update
+        }
+        return render(request, self.template_name, context)
+    
+
+# @login_required
+# @recepcionist_required
+# def update_mechanic(request, id):
+#     if request.method == 'POST':
+#         mechanic = get_object_or_404(Mechanic, pk=id)
+#         form_update = MechanicForm(request.POST, request.FILES, instance=mechanic)
+#         try:   
+#             if form_update.is_valid():
+#                 form_update.save()
+#                 messages.success(request, 'Mecánico actualizado exitosamente.')
+#                 return redirect('list_mechanic')
+#             else:
+#                 messages.error(request, "Error al actualizar mecánico.")
+#         except ValidationError as e:
+#             messages.error(request, 'Error de ejecución')
+#     else:
+#         mechanic = get_object_or_404(Mechanic, pk=id)
+#         form_update = MechanicForm(instance=mechanic)
+
+#     return render(request, 'recepcionist/mechanic/update_mechanic.html', {
+#             'data_mechanic': mechanic,
+#             'form_update': form_update,
+#         })
 
 
-@login_required
-@recepcionist_required
-def delete_mechanic(request, id):
-    mechanic = get_object_or_404(Mechanic, pk=id)
-    if request.method == 'POST':
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class DeleteMechanicView(View):
+    def post(self, request, id):
+        mechanic = get_object_or_404(Mechanic, pk=id)
         try:
-            # Se cambia estado a inactivo
+            # Cambia el estado del mecánico a inactivo
             mechanic.is_active = False
-            # Se borra imágen establecida, y se deja la por default
+            # Elimina la imagen establecida y asigna la imagen por defecto
             mechanic.image.delete()
             mechanic.image = "mechanics/foto_personal.jpg"
-
             mechanic.save()
+
             messages.success(request, "Mecánico eliminado exitosamente.")
             return redirect('list_mechanic')
-        except:
+        except Exception:
             messages.error(request, "Error al eliminar mecánico.")
+            return redirect('list_mechanic')
+
+# @login_required
+# @recepcionist_required
+# def delete_mechanic(request, id):
+#     mechanic = get_object_or_404(Mechanic, pk=id)
+#     if request.method == 'POST':
+#         try:
+#             # Se cambia estado a inactivo
+#             mechanic.is_active = False
+#             # Se borra imágen establecida, y se deja la por default
+#             mechanic.image.delete()
+#             mechanic.image = "mechanics/foto_personal.jpg"
+
+#             mechanic.save()
+#             messages.success(request, "Mecánico eliminado exitosamente.")
+#             return redirect('list_mechanic')
+#         except:
+#             messages.error(request, "Error al eliminar mecánico.")
 
         # try:
         #     image_path = mechanic.image.path
@@ -1106,7 +1227,12 @@ def delete_mechanic(request, id):
 
 
 
+
+
 # JOBS VIEWS para Recepcionista
+
+
+
 
 # @login_required
 # @recepcionist_required
@@ -1129,85 +1255,195 @@ def delete_mechanic(request, id):
 #     })
 
 
-@login_required
-@recepcionist_required
-def list_jobs_diary(request):
-    current_date = timezone.now().date()
-    print(current_date)
-    # Filtramos las citas por fecha actual y las ordenamos por hora de atención
-    appointments_diary = Appointment.objects.filter(
-        inprogress=True, 
-        completed=False, 
-        date_register=current_date)
-    jobs_diary = Job.objects.filter(appointment__in=appointments_diary).order_by('appointment__attention')
-    error_diary =  'No existen trabajos el día de hoy'
 
-    return render(request, 'recepcionist/jobs/list_jobs_diary.html', {
-        'list_jobs_diary':jobs_diary,
-        'error_diary':error_diary,
-        'current_date':current_date
-    })
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class ListJobsDiaryView(View):
+    template_name = 'recepcionist/jobs/list_jobs_diary.html'
 
-@login_required
-@recepcionist_required
-def list_jobs_inprogress(request):
-    current_date = timezone.now().date()
-    # Filtra las citas : 
-    # La cita está en progreso y no está completada Y la cita no esta finalizada
+    def get(self, request):
+        current_date = timezone.now().date()
+        
+        # Filtrar las citas en progreso y no completadas para la fecha actual
+        appointments_diary = Appointment.objects.filter(
+            inprogress=True, 
+            completed=False, 
+            date_register=current_date
+        )
+        jobs_diary = Job.objects.filter(
+            appointment__in=appointments_diary
+        ).order_by('appointment__attention')
 
-    appointments = Appointment.objects.filter(
-        Q(inprogress=True, completed=False) 
-        # No muestra los del dia actual
-        # & ~Q(date_register=current_date) 
-        & Q(date_finished__isnull=True))
-    jobs = Job.objects.filter(appointment__in=appointments).order_by('appointment__date_register')
-    # mechanic = Mechanic.objects.get()
-    error =  'No existen trabajos en progreso'
+        error_diary = 'No existen trabajos el día de hoy' if not jobs_diary.exists() else None
+
+        context = {
+            'list_jobs_diary': jobs_diary,
+            'error_diary': error_diary,
+            'current_date': current_date
+        }
+        return render(request, self.template_name, context)
+    
+# @login_required
+# @recepcionist_required
+# def list_jobs_diary(request):
+#     current_date = timezone.now().date()
+#     print(current_date)
+#     # Filtramos las citas por fecha actual y las ordenamos por hora de atención
+#     appointments_diary = Appointment.objects.filter(
+#         inprogress=True, 
+#         completed=False, 
+#         date_register=current_date)
+#     jobs_diary = Job.objects.filter(appointment__in=appointments_diary).order_by('appointment__attention')
+#     error_diary =  'No existen trabajos el día de hoy'
+
+#     return render(request, 'recepcionist/jobs/list_jobs_diary.html', {
+#         'list_jobs_diary':jobs_diary,
+#         'error_diary':error_diary,
+#         'current_date':current_date
+#     })
 
 
-    return render(request, 'recepcionist/jobs/list_jobs_inprogress.html', {
-        # 'list_appointments':appointments,
-        'list_jobs':jobs,
-        'error':error,
-    })
 
 
-@login_required
-@recepcionist_required
-def change_mechanic(request, id):
-    appointment = Appointment.objects.get(id=id)
-    print(appointment)
-    mechanic = appointment.mechanic
-    if request.method == 'POST':
-        form = ChangeMechanicForm(request.POST, instance=appointment)
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class ListJobsInProgressView(View):
+    template_name = 'recepcionist/jobs/list_jobs_inprogress.html'
+
+    def get(self, request):
+        current_date = timezone.now().date()
+
+        # Filtra las citas en progreso, no completadas, y sin fecha de finalización
+        appointments = Appointment.objects.filter(
+            Q(inprogress=True, completed=False) &
+            Q(date_finished__isnull=True)
+        )
+        
+        # Filtra los trabajos asociados a las citas obtenidas y los ordena por fecha de registro
+        jobs = Job.objects.filter(appointment__in=appointments).order_by('appointment__date_register')
+        error = 'No existen trabajos en progreso' if not jobs.exists() else None
+
+        context = {
+            'list_jobs': jobs,
+            'error': error,
+        }
+        return render(request, self.template_name, context)
+    
+
+# @login_required
+# @recepcionist_required
+# def list_jobs_inprogress(request):
+#     current_date = timezone.now().date()
+#     # Filtra las citas : 
+#     # La cita está en progreso y no está completada Y la cita no esta finalizada
+
+#     appointments = Appointment.objects.filter(
+#         Q(inprogress=True, completed=False) 
+#         # No muestra los del dia actual
+#         # & ~Q(date_register=current_date) 
+#         & Q(date_finished__isnull=True))
+#     jobs = Job.objects.filter(appointment__in=appointments).order_by('appointment__date_register')
+#     # mechanic = Mechanic.objects.get()
+#     error =  'No existen trabajos en progreso'
+
+
+#     return render(request, 'recepcionist/jobs/list_jobs_inprogress.html', {
+#         # 'list_appointments':appointments,
+#         'list_jobs':jobs,
+#         'error':error,
+#     })
+
+
+
+
+
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class ChangeMechanicInJobView(View):
+    template_name = 'recepcionist/mechanic/change_mechanic.html'
+    form_class = ChangeMechanicForm
+
+    def get_object(self, id):
+        return get_object_or_404(Appointment, id=id)
+
+    def get(self, request, id):
+        appointment = self.get_object(id)
+        form = self.form_class(instance=appointment)
+        
+        context = {
+            'form': form,
+            'appointment': appointment
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, id):
+        appointment = self.get_object(id)
+        form = self.form_class(request.POST, instance=appointment)
+        
         if form.is_valid():
             new_mechanic = form.cleaned_data['change_mechanic']
-            print(new_mechanic)
             appointment.mechanic = new_mechanic
             appointment.save()
-            return redirect('list_jobs_inprogress')  # Redirigir a la lista de trabajos después de cambiar el mecánico
-    else:
-        form = ChangeMechanicForm(instance=appointment)
+            return redirect('list_jobs_inprogress')  # Redirigir después de cambiar el mecánico
 
-    return render(request, 'recepcionist/mechanic/change_mechanic.html', {
-        'form': form, 
-        'appointment': appointment
-    })
+        context = {
+            'form': form,
+            'appointment': appointment
+        }
+        return render(request, self.template_name, context)
+    
+
+# @login_required
+# @recepcionist_required
+# def change_mechanic(request, id):
+#     appointment = Appointment.objects.get(id=id)
+#     print(appointment)
+#     mechanic = appointment.mechanic
+#     if request.method == 'POST':
+#         form = ChangeMechanicForm(request.POST, instance=appointment)
+#         if form.is_valid():
+#             new_mechanic = form.cleaned_data['change_mechanic']
+#             print(new_mechanic)
+#             appointment.mechanic = new_mechanic
+#             appointment.save()
+#             return redirect('list_jobs_inprogress')  # Redirigir a la lista de trabajos después de cambiar el mecánico
+#     else:
+#         form = ChangeMechanicForm(instance=appointment)
+
+#     return render(request, 'recepcionist/mechanic/change_mechanic.html', {
+#         'form': form, 
+#         'appointment': appointment
+#     })
 
 
-@login_required
-@recepcionist_required
-def list_jobs_completed(request):
-    # Filtra las citas que estan finalizadas
-    appointments = Appointment.objects.filter(date_finished__isnull=False)
-    jobs = Job.objects.filter(appointment__in=appointments)
-    error =  'No existen trabajos finalizados'
+
+
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class ListJobsCompletedView(View):
+    template_name = 'recepcionist/jobs/list_jobs_completed.html'
+
+    def get(self, request):
+        # Filtra las citas que están finalizadas
+        appointments = Appointment.objects.filter(date_finished__isnull=False)
+        jobs = Job.objects.filter(appointment__in=appointments)
+        error = 'No existen trabajos finalizados' if not jobs.exists() else None
+
+        context = {
+            'list_jobs': jobs,
+            'error': error
+        }
+        return render(request, self.template_name, context)
+    
+# @login_required
+# @recepcionist_required
+# def list_jobs_completed(request):
+#     # Filtra las citas que estan finalizadas
+#     appointments = Appointment.objects.filter(date_finished__isnull=False)
+#     jobs = Job.objects.filter(appointment__in=appointments)
+#     error =  'No existen trabajos finalizados'
      
-    return render(request, 'recepcionist/jobs/list_jobs_completed.html', {
-        # 'list_appointments':appointments,
-        'list_jobs':jobs,
-        'error':error
-    })
+#     return render(request, 'recepcionist/jobs/list_jobs_completed.html', {
+#         # 'list_appointments':appointments,
+#         'list_jobs':jobs,
+#         'error':error
+#     })
 
 
 
@@ -1252,30 +1488,46 @@ def list_jobs_completed(request):
 
 
 
-@login_required
-@recepcionist_required
-def job_checklist (request, id):
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class JobChecklistView(View):
+    template_name = 'recepcionist/checklist.html'
 
-    job = get_object_or_404(Job, pk=id)
-    works = Work.objects.filter(job_id=job)
-    # Obtén los servicios relacionados al trabajo actual
-    list_services = Work.objects.filter(job=job)
-    checklist = job.checklist
-    # km = job.checklist.km
+    def get_object(self, id):
+        return get_object_or_404(Job, pk=id)
 
-    if request.method == 'POST':
-        # Se filtra por la instancia del trabajo para mostrar todo el checklist como formulario
-        # Ademas de los servicios (En caso que se hayan agregado)
+    def get(self, request, id):
+        job = self.get_object(id)
+        works = Work.objects.filter(job_id=job)
+        list_services = Work.objects.filter(job=job)
+        checklist = job.checklist
+
+        form_work = WorkForm(instance=job)
+        form_checklist = ChecklistForm(instance=job.checklist)
+        form_status = VehicleStatusForm(instance=job)
+
+        context = {
+            'form_work': form_work,
+            'form_checklist': form_checklist,
+            'checklist': checklist,
+            'form_status': form_status,
+            'list_services': list_services
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request, id):
+        job = self.get_object(id)
+        works = Work.objects.filter(job_id=job)
+        
         form_work = WorkForm(request.POST, instance=job)
-        form_checklist = ChecklistForm(request.POST, instance=job.checklist)       
+        form_checklist = ChecklistForm(request.POST, instance=job.checklist)
         form_status = VehicleStatusForm(request.POST, instance=job)
 
-        form_checklist.save()
         try:
-            # Se realiza la validación mediante el update_checklist.js   
+            # Guarda el checklist si es válido
             if form_checklist.is_valid():
                 form_checklist.save()
 
+            # Guarda el estado del trabajo y los servicios relacionados
             if form_work.is_valid():
                 for service in works:
                     checkbox_name = f"service_{service.id}"
@@ -1283,6 +1535,7 @@ def job_checklist (request, id):
                     service.status_service = status
                     service.save()
 
+            # Guarda el estado del vehículo
             if form_status.is_valid():
                 form_status.save()
 
@@ -1290,180 +1543,383 @@ def job_checklist (request, id):
             return redirect('checklist', id=id)
         except ValidationError:
             messages.error(request, "Error al cargar")
-    else:
-        # Servicios
-        form_work = WorkForm(instance=job)
-        form_checklist = ChecklistForm(instance=job.checklist)
-        form_status = VehicleStatusForm(instance=job)
+
+        # Si hay errores, vuelve a renderizar el formulario con los datos
+        context = {
+            'form_work': form_work,
+            'form_checklist': form_checklist,
+            'checklist': job.checklist,
+            'form_status': form_status,
+            'list_services': works
+        }
+        return render(request, self.template_name, context)
+
+# @login_required
+# @recepcionist_required
+# def job_checklist (request, id):
+
+#     job = get_object_or_404(Job, pk=id)
+#     works = Work.objects.filter(job_id=job)
+#     # Obtén los servicios relacionados al trabajo actual
+#     list_services = Work.objects.filter(job=job)
+#     checklist = job.checklist
+#     # km = job.checklist.km
+
+#     if request.method == 'POST':
+#         # Se filtra por la instancia del trabajo para mostrar todo el checklist como formulario
+#         # Ademas de los servicios (En caso que se hayan agregado)
+#         form_work = WorkForm(request.POST, instance=job)
+#         form_checklist = ChecklistForm(request.POST, instance=job.checklist)       
+#         form_status = VehicleStatusForm(request.POST, instance=job)
+
+#         form_checklist.save()
+#         try:
+#             # Se realiza la validación mediante el update_checklist.js   
+#             if form_checklist.is_valid():
+#                 form_checklist.save()
+
+#             if form_work.is_valid():
+#                 for service in works:
+#                     checkbox_name = f"service_{service.id}"
+#                     status = checkbox_name in request.POST
+#                     service.status_service = status
+#                     service.save()
+
+#             if form_status.is_valid():
+#                 form_status.save()
+
+#             messages.success(request, "Trabajo actualizado exitosamente.")
+#             return redirect('checklist', id=id)
+#         except ValidationError:
+#             messages.error(request, "Error al cargar")
+#     else:
+#         # Servicios
+#         form_work = WorkForm(instance=job)
+#         form_checklist = ChecklistForm(instance=job.checklist)
+#         form_status = VehicleStatusForm(instance=job)
 
 
-    return render(request, 'recepcionist/checklist.html', {
-        'form_work':form_work,
-        'form_checklist':form_checklist,
-        'checklist':checklist,
-        'form_status':form_status,
-        'list_services': list_services
-        # 'km':km
-    })
+#     return render(request, 'recepcionist/checklist.html', {
+#         'form_work':form_work,
+#         'form_checklist':form_checklist,
+#         'checklist':checklist,
+#         'form_status':form_status,
+#         'list_services': list_services
+#         # 'km':km
+#     })
 
 
 
-@login_required
-@recepcionist_required
-def delete_service(request, id_service, id):
-    service = get_object_or_404(Work, pk=id_service)
-    if request.method == 'POST':
-        # Elimina el servicio desde modificar trabajo, el cual esta asociado al mismo trabajo
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class DeleteServiceView(View):
+    def post(self, request, id_service, id):
+        service = get_object_or_404(Work, pk=id_service)
         service.delete()
         messages.success(request, "Servicio eliminado con éxito.")
         return redirect('checklist', id=id)
+    
+# @login_required
+# @recepcionist_required
+# def delete_service(request, id_service, id):
+#     service = get_object_or_404(Work, pk=id_service)
+#     if request.method == 'POST':
+#         # Elimina el servicio desde modificar trabajo, el cual esta asociado al mismo trabajo
+#         service.delete()
+#         messages.success(request, "Servicio eliminado con éxito.")
+#         return redirect('checklist', id=id)
 
 
 
-@login_required
-@recepcionist_required
-def update_job(request, id):
-    if request.method == 'POST':
-        job = get_object_or_404(Job, pk=id)
+
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class UpdateJobView(View):
+    template_name = 'recepcionist/jobs/update_job.html'
+    form_job_class = JobForm
+    form_service_class = ServiceForm
+
+    def get_object(self, id):
+        return get_object_or_404(Job, pk=id)
+
+    def get(self, request, id):
+        job = self.get_object(id)
         description = job.description_job.capitalize() if job.description_job else ''
-        services = Work.objects.filter(job=job) 
-        try:   
-            form_job = JobForm(request.POST, initial={'description_job':description}) 
-            form_service = ServiceForm(request.POST)
+        
+        form_job = self.form_job_class(initial={'description_job': description})
+        form_service = self.form_service_class()
+        
+        context = {
+            'form_job': form_job,
+            'form_service': form_service,
+            'job': job
+        }
+        return render(request, self.template_name, context)
 
+    def post(self, request, id):
+        job = self.get_object(id)
+        description = job.description_job.capitalize() if job.description_job else ''
+        
+        form_job = self.form_job_class(request.POST, initial={'description_job': description})
+        form_service = self.form_service_class(request.POST)
+
+        try:
+            # Validar y guardar la descripción del trabajo
             if form_job.is_valid():
-                # Actualizar la descripción del trabajo
-                job.description_job = request.POST['description_job'].capitalize()
+                job.description_job = form_job.cleaned_data['description_job'].capitalize()
                 job.save()
-                
+
+            # Validar y agregar nuevos servicios al trabajo
             if form_service.is_valid():
-                # Agrega los nuevos servicios seleccionados
                 new_selected_service_ids = request.POST.getlist('service')
                 services_to_add = Service.objects.filter(id__in=new_selected_service_ids)
                 for service in services_to_add:
                     Work.objects.create(job=job, service=service)
-                
+
             messages.success(request, "Trabajo actualizado exitosamente.")
             return redirect('update_job', id=id)
         except ValidationError:
             messages.error(request, "Error al cargar")
-    else:
-        job = get_object_or_404(Job, pk=id)
-        description = job.description_job.capitalize() if job.description_job else ''
-        form_job = JobForm(initial={'description_job':description}) 
-        form_service = ServiceForm()
 
-    return render(request, 'recepcionist/jobs/update_job.html', {
-        'form_job':form_job,
-        'form_service':form_service,
-        'job':job
-    })
+        # Si hay errores, vuelve a renderizar el formulario con los datos actuales
+        context = {
+            'form_job': form_job,
+            'form_service': form_service,
+            'job': job
+        }
+        return render(request, self.template_name, context)
+
+# @login_required
+# @recepcionist_required
+# def update_job(request, id):
+#     if request.method == 'POST':
+#         job = get_object_or_404(Job, pk=id)
+#         description = job.description_job.capitalize() if job.description_job else ''
+#         services = Work.objects.filter(job=job) 
+#         try:   
+#             form_job = JobForm(request.POST, initial={'description_job':description}) 
+#             form_service = ServiceForm(request.POST)
+
+#             if form_job.is_valid():
+#                 # Actualizar la descripción del trabajo
+#                 job.description_job = request.POST['description_job'].capitalize()
+#                 job.save()
+                
+#             if form_service.is_valid():
+#                 # Agrega los nuevos servicios seleccionados
+#                 new_selected_service_ids = request.POST.getlist('service')
+#                 services_to_add = Service.objects.filter(id__in=new_selected_service_ids)
+#                 for service in services_to_add:
+#                     Work.objects.create(job=job, service=service)
+                
+#             messages.success(request, "Trabajo actualizado exitosamente.")
+#             return redirect('update_job', id=id)
+#         except ValidationError:
+#             messages.error(request, "Error al cargar")
+#     else:
+#         job = get_object_or_404(Job, pk=id)
+#         description = job.description_job.capitalize() if job.description_job else ''
+#         form_job = JobForm(initial={'description_job':description}) 
+#         form_service = ServiceForm()
+
+#     return render(request, 'recepcionist/jobs/update_job.html', {
+#         'form_job':form_job,
+#         'form_service':form_service,
+#         'job':job
+#     })
 
 
 
 
-@login_required
-@recepcionist_required
-def delete_job(request, id, job_type):
-    job = get_object_or_404(Job, appointment_id=id)
-    # Cambia estado de cita a "Cancelado"
-    status = VehicleStatus.objects.get(pk=8)
-    description = request.POST.get('description_job_cancel')
-    if request.method == 'POST':
-        # return redirect('list_jobs_pending')
-        # if job_type == 'pending':
-        #     job.description_job = description
-        #     job.status = status
-        #     job.appointment.date_finished = timezone.now()
-        #     job.save()
-        #     job.appointment.save()
-        #     messages.success(request, "Cita cancelada con éxito.")
-        #     return redirect('list_jobs_pending')
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class DeleteJobView(View):
+    def post(self, request, id, job_type):
+        job = get_object_or_404(Job, appointment_id=id)
+        description = request.POST.get('description_job_cancel')
+
         if job_type == 'inprogress':
+            # Cambia el estado de la cita a "Cancelado"
+            status = VehicleStatus.objects.get(pk=8)
             job.status = status
             job.appointment.date_finished = timezone.now()
             job.save()
             job.appointment.save()
             messages.success(request, "Cita cancelada con éxito.")
             return redirect('list_jobs_inprogress')
+        
         elif job_type == 'completed':
-            # Cambia estado de cita a "Eliminado"
+            # Cambia el estado de la cita a "Eliminado"
             status = VehicleStatus.objects.get(pk=9)
             job.status = status
             job.save()
             messages.success(request, "Cita eliminada con éxito.")
             return redirect('list_jobs_completed')
+    
+
+# @login_required
+# @recepcionist_required
+# def delete_job(request, id, job_type):
+#     job = get_object_or_404(Job, appointment_id=id)
+#     # Cambia estado de cita a "Cancelado"
+#     status = VehicleStatus.objects.get(pk=8)
+#     description = request.POST.get('description_job_cancel')
+#     if request.method == 'POST':
+#         # return redirect('list_jobs_pending')
+#         # if job_type == 'pending':
+#         #     job.description_job = description
+#         #     job.status = status
+#         #     job.appointment.date_finished = timezone.now()
+#         #     job.save()
+#         #     job.appointment.save()
+#         #     messages.success(request, "Cita cancelada con éxito.")
+#         #     return redirect('list_jobs_pending')
+#         if job_type == 'inprogress':
+#             job.status = status
+#             job.appointment.date_finished = timezone.now()
+#             job.save()
+#             job.appointment.save()
+#             messages.success(request, "Cita cancelada con éxito.")
+#             return redirect('list_jobs_inprogress')
+#         elif job_type == 'completed':
+#             # Cambia estado de cita a "Eliminado"
+#             status = VehicleStatus.objects.get(pk=9)
+#             job.status = status
+#             job.save()
+#             messages.success(request, "Cita eliminada con éxito.")
+#             return redirect('list_jobs_completed')
       
 
-@login_required
-@recepcionist_required
-def completed_job(request, id):
-    job = get_object_or_404(Job, pk=id)
-    user = job.appointment.vehicle.customer
 
-    if request.method == 'POST':
-        # Cambio de estado de la cita
-        # job.appointment.description_customer = job.description_job
-        
-        # Cambios de estado del trabajo
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class CompleteJobView(View):
+    def post(self, request, id):
+        job = get_object_or_404(Job, pk=id)
+        user = job.appointment.vehicle.customer
+
+        # Cambia el estado de la cita a completada
         job.appointment.completed = True
         job.appointment.date_finished = timezone.now()
         job.appointment.save()
 
+        # Calcula y asigna los puntos ganados al cliente
         services = job.work_set.all()
-        # Si el trabajo se finaliza se hacen los calculos para dar los puntos ganados al cliente
         total_points = Point.objects.get(customer=user)
-        for point in services:
-            point_earned = point.service.earn_points
-            total_points.points += point_earned
+        
+        for service in services:
+            total_points.points += service.service.earn_points
         total_points.save()
 
         messages.success(request, "Trabajo finalizado exitosamente.")
         return redirect('list_jobs_inprogress')
 
-    return messages.error(request, "Error al finalizar trabajo.")
+# @login_required
+# @recepcionist_required
+# def completed_job(request, id):
+#     job = get_object_or_404(Job, pk=id)
+#     user = job.appointment.vehicle.customer
+
+#     if request.method == 'POST':
+#         # Cambio de estado de la cita
+#         # job.appointment.description_customer = job.description_job
+        
+#         # Cambios de estado del trabajo
+#         job.appointment.completed = True
+#         job.appointment.date_finished = timezone.now()
+#         job.appointment.save()
+
+#         services = job.work_set.all()
+#         # Si el trabajo se finaliza se hacen los calculos para dar los puntos ganados al cliente
+#         total_points = Point.objects.get(customer=user)
+#         for point in services:
+#             point_earned = point.service.earn_points
+#             total_points.points += point_earned
+#         total_points.save()
+
+#         messages.success(request, "Trabajo finalizado exitosamente.")
+#         return redirect('list_jobs_inprogress')
+
+#     return messages.error(request, "Error al finalizar trabajo.")
 
 
 
 
+@method_decorator([login_required, recepcionist_required], name='dispatch')
+class SearchPatentView(View):
+    template_name = 'recepcionist/search_patent.html'
+    form_class = JobForm
 
-@login_required
-@recepcionist_required
-def search_patent(request):
-    # Busqueda de cita por Número de cita o Patente
-    data = request.GET.get('patent').upper()
-    patent = None
-    date = None
-    error = "Patente o cita no existe."
-    form_job = JobForm(request.POST)
-    if data is not None:
-        vehicle = Vehicle.objects.filter(patent=str(data))
-        # Filtrado por patente
-        if vehicle.exists():
-            appointments = Appointment.objects.filter(vehicle_id=vehicle.first())
-            # job = Job.objects.filter(appointment__in=appointments).order_by('appointment__date_register', 'appointment__attention')
-            # search = Appointment.objects.filter(vehicle_id=vehicle.first())
-            patent = Job.objects.filter(appointment__in=appointments)
-            error = "Patente no tiene citas."
-            search = True
-        else:
-            # Filtrado por número de cita
-            try:
-                appointment = Appointment.objects.filter(pk=data)
-                job = Job.objects.filter(appointment__in=appointment)
-                date = job
+    def get(self, request):
+        data = request.GET.get('patent', '').upper()
+        patent = None
+        date = None
+        error = "Patente o cita no existe."
+        form_job = self.form_class()
+        search = False
+
+        if data:
+            # Búsqueda por patente
+            vehicle = Vehicle.objects.filter(patent=str(data))
+            if vehicle.exists():
+                appointments = Appointment.objects.filter(vehicle_id=vehicle.first())
+                patent = Job.objects.filter(appointment__in=appointments)
+                error = "Patente no tiene citas." if not patent.exists() else None
                 search = True
-            except (Appointment.DoesNotExist, ValueError):
-                search = False
+            else:
+                # Búsqueda por número de cita
+                try:
+                    appointment = Appointment.objects.filter(pk=data)
+                    job = Job.objects.filter(appointment__in=appointment)
+                    date = job if job.exists() else None
+                    error = "Número de cita no tiene trabajos." if not job.exists() else None
+                    search = True
+                except (Appointment.DoesNotExist, ValueError):
+                    search = False
+
+        context = {
+            'data': data,
+            'search': search,
+            'patent': patent,
+            'date': date,
+            'form': form_job,
+            'error': error
+        }
+        return render(request, self.template_name, context)
+    
+# @login_required
+# @recepcionist_required
+# def search_patent(request):
+#     # Busqueda de cita por Número de cita o Patente
+#     data = request.GET.get('patent').upper()
+#     patent = None
+#     date = None
+#     error = "Patente o cita no existe."
+#     form_job = JobForm(request.POST)
+#     if data is not None:
+#         vehicle = Vehicle.objects.filter(patent=str(data))
+#         # Filtrado por patente
+#         if vehicle.exists():
+#             appointments = Appointment.objects.filter(vehicle_id=vehicle.first())
+#             # job = Job.objects.filter(appointment__in=appointments).order_by('appointment__date_register', 'appointment__attention')
+#             # search = Appointment.objects.filter(vehicle_id=vehicle.first())
+#             patent = Job.objects.filter(appointment__in=appointments)
+#             error = "Patente no tiene citas."
+#             search = True
+#         else:
+#             # Filtrado por número de cita
+#             try:
+#                 appointment = Appointment.objects.filter(pk=data)
+#                 job = Job.objects.filter(appointment__in=appointment)
+#                 date = job
+#                 search = True
+#             except (Appointment.DoesNotExist, ValueError):
+#                 search = False
 
 
-    return render(request, 'recepcionist/search_patent.html',{
-        'data' : data,
-        'search': search,
-        'patent':patent,
-        'date': date,
-        'form':form_job,
-        'error':error
-    })
+#     return render(request, 'recepcionist/search_patent.html',{
+#         'data' : data,
+#         'search': search,
+#         'patent':patent,
+#         'date': date,
+#         'form':form_job,
+#         'error':error
+#     })
 
 

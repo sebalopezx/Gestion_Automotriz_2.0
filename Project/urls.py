@@ -23,19 +23,19 @@ from django.conf.urls.static import static
 # from Management.views import signin
 from apps.Management.views import IndexView, SignupView, SigninView, SignoutView, ListUserDataView, DetailuserData, DeleteUserView, UpdatePassword
 from apps.Management.views import RegisterVehicleView, UpdateVehicleView, RegisterDateView, CreateCouponPointsView, DeleteCouponView, ListVehiclesView, DeleteVehicleView, StateVehicleView, ListAppointmentView, CancelAppointmentView
+from apps.Management.views import RegisterRecepcionistView, ListMechanicView, RegisterMechanicView, UpdateMechanicView, DeleteMechanicView, ListJobsDiaryView, ListJobsInProgressView, ChangeMechanicInJobView, ListJobsCompletedView, JobChecklistView, DeleteServiceView, UpdateJobView, DeleteJobView, CompleteJobView, SearchPatentView
 from apps.Management import views
 from apps.Management import api
 # from Management.api import obtener_marcas_y_modelos, VehicleDataAPIView
 
 urlpatterns = [
     path('admin/', admin.site.urls, name="administration"),
-    path('', IndexView.as_view() , name='index' ),
+    path('', IndexView.as_view(), name='index' ),
 
-    path('api/', api.api_vehicles , name='vehicles' ),
-    path('api/brands/', api.get_brands , name='brands' ),
-    path('api/brands/<str:object_id_marca>/', api.get_models , name='models' ),
-    path('api/brands/<str:object_id_marca>/models/<str:object_id_modelo>/', api.get_years , name='years' ),
-
+    path('api/', api.api_vehicles, name='vehicles' ),
+    path('api/brands/', api.get_brands, name='brands' ),
+    path('api/brands/<str:object_id_marca>/', api.get_models, name='models' ),
+    path('api/brands/<str:object_id_marca>/models/<str:object_id_modelo>/', api.get_years, name='years' ),
 
 
     # URLS LOGIN
@@ -60,37 +60,39 @@ urlpatterns = [
 
     path('appointment/', ListAppointmentView.as_view(), name='appointment'),
     path('appointment/<int:id>/cancel/', CancelAppointmentView.as_view(), name='cancel_appointment'),
-    path('register_date/', RegisterDateView.as_view(),name='register_date'),
+    path('register_date/', RegisterDateView.as_view(), name='register_date'),
 
     # path('points/', views.points, name='points'),
+
 
     # URLS RECEPCIONISTAS
     # path('register_recepcionist/', views.register_recepcionist ,name='register_recepcionist'),
     # path('gestion_coupons/', views.gestion_coupons, name='gestion_coupons'),
 
-    path('list_mechanic/', views.list_mechanic ,name='list_mechanic'),
-    path('list_mechanic/<int:id>/update/', views.update_mechanic ,name='update_mechanic'),
-    path('list_mechanic/<int:id>/delete/', views.delete_mechanic ,name='delete_mechanic'),
-    path('register_mechanic/', views.register_mechanic ,name='register_mechanic'),
-    path('change_mechanic/<int:id>/', views.change_mechanic ,name='change_mechanic'),
+    path('list_mechanic/', ListMechanicView.as_view(), name='list_mechanic'),
+    path('list_mechanic/<int:id>/update/', UpdateMechanicView.as_view(), name='update_mechanic'),
+    path('list_mechanic/<int:id>/delete/', DeleteMechanicView.as_view(), name='delete_mechanic'),
+    path('register_mechanic/', RegisterMechanicView.as_view(), name='register_mechanic'),
 
     # path('list_jobs_pending/', views.list_jobs_pending ,name='list_jobs_pending'),
     # path('list_jobs_pending/<int:id>/ot/', views.generate_ot ,name='generate_ot'),
     # path('list_jobs_pending/<int:id>/delete/<str:job_type>/', views.delete_job ,name='delete_job_pending'),
-    path('list_jobs_diary/', views.list_jobs_diary ,name='list_jobs_diary'),
-    path('list_jobs_inprogress/', views.list_jobs_inprogress ,name='list_jobs_inprogress'),
-    path('list_jobs_inprogress/<int:id>/checklist/', views.job_checklist ,name='checklist'),
-    path('list_jobs_inprogress/<int:id>/update/', views.update_job ,name='update_job'),
-    path('list_jobs_inprogress/<int:id>/<str:job_type>/delete/', views.delete_job ,name='delete_job_inprogress'),
-    path('list_jobs_inprogress/<int:id>/completed/', views.completed_job ,name='completed_job'),
-    path('list_jobs_completed/', views.list_jobs_completed ,name='list_jobs_completed'),
-    path('list_jobs_completed/<int:id>/<str:job_type>/delete/', views.delete_job ,name='delete_job_completed'),
-    path('list_service/<int:id_service>/<int:id>/delete/', views.delete_service ,name='delete_service'),
+
+    path('change_mechanic/<int:id>/', ChangeMechanicInJobView.as_view(), name='change_mechanic'),
+    path('list_jobs_diary/', ListJobsDiaryView.as_view(), name='list_jobs_diary'),
+    path('list_jobs_inprogress/', ListJobsInProgressView.as_view(), name='list_jobs_inprogress'),
+    path('list_jobs_inprogress/<int:id>/checklist/', JobChecklistView.as_view(), name='checklist'),
+    path('list_jobs_inprogress/<int:id>/update/', UpdateJobView.as_view(), name='update_job'),
+    path('list_jobs_inprogress/<int:id>/<str:job_type>/delete/', DeleteJobView.as_view(), name='delete_job_inprogress'),
+    path('list_jobs_inprogress/<int:id>/completed/', CompleteJobView.as_view(), name='completed_job'), # TODO: NOMBRE MAS DESCRIPTIVO 
+    path('list_jobs_completed/', ListJobsCompletedView.as_view(), name='list_jobs_completed'),
+    path('list_jobs_completed/<int:id>/<str:job_type>/delete/', DeleteJobView.as_view(), name='delete_job_completed'),
+    path('list_service/<int:id_service>/<int:id>/delete/', DeleteServiceView.as_view(), name='delete_service'),
 
 
     # Toma un parámetro opcional llamado 'patent' compuesto por letras o números 
     # Esta ruta se usa para buscar una patente específica y está asociada al id de la cita o patente.
-    re_path('search_patent/(?P<patent>[\w\d]+)?/', views.search_patent, name='search_patent'),
+    re_path('search_patent/(?P<patent>[\w\d]+)?/', SearchPatentView.as_view(), name='search_patent'),
 
 
 
