@@ -21,7 +21,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 # from Management.views import signin
-from apps.Management.views import IndexView, SignupView, SigninView, SignoutView
+from apps.Management.views import IndexView, SignupView, SigninView, SignoutView, ListUserDataView, DetailuserData, DeleteUserView, UpdatePassword
+from apps.Management.views import RegisterVehicleView, UpdateVehicleView, RegisterDateView, CreateCouponPointsView, DeleteCouponView, ListVehiclesView, DeleteVehicleView, StateVehicleView, ListAppointmentView, CancelAppointmentView
 from apps.Management import views
 from apps.Management import api
 # from Management.api import obtener_marcas_y_modelos, VehicleDataAPIView
@@ -43,22 +44,23 @@ urlpatterns = [
     path('signout/', SignoutView.as_view(), name='signout' ),
 
     # URLS CLIENTES 
-    path('user_data/', views.list_user_data , name='user_data'),
-    path('user_data/<int:id>/data/', views.detail_user_data , name='detail_user_data'),
-    path('user_data/<int:id>/update/', views.update_password , name='update_password'),
-    path('user_data/create_coupon_points/', views.create_coupon_points , name='create_coupon_points'),
-    path('user_data/<int:id>/delete_coupon/', views.delete_coupon , name='delete_coupon'),
-    path('user_data/<int:id>/delete_user/', views.delete_user, name='delete_user'),
+    path('user_data/', ListUserDataView.as_view() , name='user_data'),
+    path('user_data/<int:id>/data/', DetailuserData.as_view() , name='detail_user_data'),
+    path('user_data/<int:id>/update/', UpdatePassword.as_view(), name='update_password'),
+    path('user_data/<int:id>/delete_user/', DeleteUserView.as_view(), name='delete_user'),
 
-    path('vehicle/', views.list_vehicles , name='vehicle'),
-    path('vehicle/<int:id>/state/', views.state_vehicle , name='state_vehicle'),
-    path('vehicle/<int:id>/delete/', views.delete_vehicle , name='delete_vehicle'),
-    path('vehicle/<int:id>/update/', views.update_vehicle , name='update_vehicle'),
-    path('register_vehicle/', views.register_vehicle , name='register_vehicle'),
+    path('user_data/create_coupon_points/', CreateCouponPointsView.as_view(), name='create_coupon_points'),
+    path('user_data/<int:id>/delete_coupon/', DeleteCouponView.as_view(), name='delete_coupon'),
 
-    path('appointment/', views.list_appointment , name='appointment'),
-    path('appointment/<int:id>/cancel/', views.cancel_appointment , name='cancel_appointment'),
-    path('register_date/', views.register_date ,name='register_date'),
+    path('vehicle/', ListVehiclesView.as_view(), name='vehicle'),
+    path('vehicle/<int:id>/state/', StateVehicleView.as_view(), name='state_vehicle'),
+    path('vehicle/<int:id>/delete/', DeleteVehicleView.as_view(), name='delete_vehicle'),
+    path('vehicle/<int:id>/update/', UpdateVehicleView.as_view(), name='update_vehicle'),
+    path('register_vehicle/', RegisterVehicleView.as_view(), name='register_vehicle'),
+
+    path('appointment/', ListAppointmentView.as_view(), name='appointment'),
+    path('appointment/<int:id>/cancel/', CancelAppointmentView.as_view(), name='cancel_appointment'),
+    path('register_date/', RegisterDateView.as_view(),name='register_date'),
 
     # path('points/', views.points, name='points'),
 

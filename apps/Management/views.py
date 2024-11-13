@@ -235,48 +235,99 @@ class SignoutView(View):
 #     return redirect('index')
 
 
+class ListUserDataView(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        # Mostramos la data del usuario (y sus puntos dependiendo del tipo de usuario)
+        user = User.objects.filter(username=request.user)
+        points = None
+        coupons = None
+        # Se buscan los puntos y cupones asociados al cliente
+        user_points = User.objects.filter(username=request.user).first() 
+        if user_points:
+            try:
+                points = Point.objects.get(customer=request.user)
+                coupons = Coupon.objects.filter(customer=request.user)
+            except ObjectDoesNotExist:
+                pass
+        error =  'No tiene datos'
 
-@login_required
-def list_user_data(request):
-    # Mostramos la data del usuario (y sus puntos dependiendo del tipo de usuario)
-    user = User.objects.filter(username=request.user)
-    points = None
-    coupons = None
-    # Se buscan los puntos y cupones asociados al cliente
-    user_points = User.objects.filter(username=request.user).first() 
-    if user_points:
-        try:
-            points = Point.objects.get(customer=request.user)
-            coupons = Coupon.objects.filter(customer=request.user)
-        except ObjectDoesNotExist:
-            pass
-    error =  'No tiene datos'
-
-    user_type_value = user_type(request.user)
-    base_template = template_base(user_type_value)
-    return render(request, 'base/details/user_data.html', {
-        'list_data':user,
-        'points':points,
-        'POINTS':POINTS_VALUE,
-        'coupons':coupons,
-        'error':error,
-        'base_template':base_template,
-        'user_type_value':user_type_value
-    })
-
-
+        user_type_value = user_type(request.user)
+        base_template = template_base(user_type_value)
+        return render(request, 'base/details/user_data.html', {
+            'list_data':user,
+            'points':points,
+            'POINTS':POINTS_VALUE,
+            'coupons':coupons,
+            'error':error,
+            'base_template':base_template,
+            'user_type_value':user_type_value
+        })
 
 
-@login_required
-def detail_user_data(request, id):
-    # Identificamos al usuario por el id
-    user = get_object_or_404(User, pk=id)
-    user_type_value = user_type(request.user)
-    base_template = template_base(user_type_value)
-    if request.method == 'POST':
+# @login_required
+# def list_user_data(request):
+#     # Mostramos la data del usuario (y sus puntos dependiendo del tipo de usuario)
+#     user = User.objects.filter(username=request.user)
+#     points = None
+#     coupons = None
+#     # Se buscan los puntos y cupones asociados al cliente
+#     user_points = User.objects.filter(username=request.user).first() 
+#     if user_points:
+#         try:
+#             points = Point.objects.get(customer=request.user)
+#             coupons = Coupon.objects.filter(customer=request.user)
+#         except ObjectDoesNotExist:
+#             pass
+#     error =  'No tiene datos'
+
+#     user_type_value = user_type(request.user)
+#     base_template = template_base(user_type_value)
+#     return render(request, 'base/details/user_data.html', {
+#         'list_data':user,
+#         'points':points,
+#         'POINTS':POINTS_VALUE,
+#         'coupons':coupons,
+#         'error':error,
+#         'base_template':base_template,
+#         'user_type_value':user_type_value
+#     })
+
+
+@method_decorator(login_required, name='dispatch')
+class DetailuserData(View):
+    template_name = 'base/details/detail_user_data.html'
+
+    def get_object(self, id):
+        return get_object_or_404(User, pk=id)
+
+    def get(self, request, id):
+        # Identificamos al usuario por el id
+        user = self.get_object(id)
+        user_type_value = user_type(request.user)
+        base_template = template_base(user_type_value)
+
+        form_update = UpdateUserCustomForm(instance=user)
+        # Deshabilitar edición del campo username
+        form_update.fields['username'].widget.attrs['readonly'] = True
+
+        context = {
+            'user': user,
+            'form_update': form_update,
+            'base_template':base_template
+        }
+        return render(request, self.template_name, context)
+    
+    def post(self, request, id):
+        # Identificamos al usuario por el id
+        user = self.get_object(id)
+        user_type_value = user_type(request.user)
+        base_template = template_base(user_type_value)
+
         # Formulario customizado para data principal y username solo de lectura
         form_update = UpdateUserCustomForm(request.POST, instance=user)
         form_update.fields['username'].widget.attrs['readonly'] = True
+
         try:
             if form_update.is_valid():
                 form_update.save()
@@ -286,328 +337,655 @@ def detail_user_data(request, id):
                 messages.error(request, 'Error al actualizar datos.')
         except IntegrityError:
             messages.error(request, 'Error de integridad.')
-
-    else:
-        form_update = UpdateUserCustomForm(instance=user)
-        # Deshabilitar edición del campo username
-        form_update.fields['username'].widget.attrs['readonly'] = True
         
-    return render(request, 'base/details/detail_user_data.html', {
-        'user': user,
-        'form_update': form_update,
-        'base_template':base_template
-    })
+        context = {
+            'user': user,
+            'form_update': form_update,
+            'base_template': base_template
+        }
+        return render(request, self.template_name, context)
 
 
-@login_required
-def delete_user(request, id):
-    # Cambia el estado a inactivo
-    user = request.user
-    user.is_active = False
-    user.save()
-    logout(request)
-    messages.success(request, 'Cuenta eliminada exitosamente.') 
-    return redirect('index')
+# @login_required
+# def detail_user_data(request, id):
+#     # Identificamos al usuario por el id
+#     user = get_object_or_404(User, pk=id)
+#     user_type_value = user_type(request.user)
+#     base_template = template_base(user_type_value)
+#     if request.method == 'POST':
+#         # Formulario customizado para data principal y username solo de lectura
+#         form_update = UpdateUserCustomForm(request.POST, instance=user)
+#         form_update.fields['username'].widget.attrs['readonly'] = True
+#         try:
+#             if form_update.is_valid():
+#                 form_update.save()
+#                 messages.success(request, 'Datos actualizados exitosamente.') 
+#                 return redirect('detail_user_data', id=id)
+#             else:
+#                 messages.error(request, 'Error al actualizar datos.')
+#         except IntegrityError:
+#             messages.error(request, 'Error de integridad.')
 
-@login_required
-def update_password(request, id):
-    # Identificamos al usuario autenticado 
-    user = request.user
-    user_type_value = user_type(request.user)
-    base_template = template_base(user_type_value)
-    if request.method == 'POST':
-        # Formulario customizado password
+#     else:
+#         form_update = UpdateUserCustomForm(instance=user)
+#         # Deshabilitar edición del campo username
+#         form_update.fields['username'].widget.attrs['readonly'] = True
+        
+#     return render(request, 'base/details/detail_user_data.html', {
+#         'user': user,
+#         'form_update': form_update,
+#         'base_template':base_template
+#     })
+
+
+class DeleteUserView(View):
+    @method_decorator(login_required)
+    def post(self, request, id):
+        # Cambia el estado a inactivo
+        # TODO: validar user
+        user = request.user
+        user.is_active = False
+        user.save()
+        logout(request)
+        messages.success(request, 'Cuenta eliminada exitosamente.') 
+        return redirect('index')
+
+# @login_required
+# def delete_user(request, id):
+#     # Cambia el estado a inactivo
+#     user = request.user
+#     user.is_active = False
+#     user.save()
+#     logout(request)
+#     messages.success(request, 'Cuenta eliminada exitosamente.') 
+#     return redirect('index')
+
+
+@method_decorator(login_required, name='dispatch')
+class UpdatePassword(View):
+    template_name = 'base/details/update_password.html'
+
+    def get(self, request, id):
+        user = request.user
+        user_type_value = user_type(user)
+        base_template = template_base(user_type_value)
+
+        # Instancia del formulario para cambio de contraseña
+        form_update = PasswordChangeForm(user)
+
+        context = {
+            'user': user,
+            'form_update': form_update,
+            'base_template': base_template
+        }
+        return render(request, self.template_name, context)
+    
+    def post(self, request, id):
+        user = request.user
+        user_type_value = user_type(user)
+        base_template = template_base(user_type_value)
+
+        # Formulario de cambio de contraseña con los datos del POST
         form_update = PasswordChangeForm(user, request.POST)
-        # form_update.fields['username'].widget.attrs['diabled'] = True
+        
         try:
             if form_update.is_valid():
                 form_update.save()
-                # Actualización de cookie del usuario
-                update_session_auth_hash(request, user)
-                messages.success(request, 'Contraseña actualizada exitosamente.') 
+                update_session_auth_hash(request, user)  # Mantiene la sesión activa después del cambio de contraseña
+                messages.success(request, 'Contraseña actualizada exitosamente.')
                 return redirect('update_password', id=id)
             else:
                 messages.error(request, 'Error al actualizar contraseña.')
         except IntegrityError:
             messages.error(request, 'Error de integridad.')
 
-    else:
-        form_update = PasswordChangeForm(user)
-        # Deshabilitar edición del campo username
-        # form_update.fields['username'].widget.attrs['disabled'] = True
+        context = {
+            'user': user,
+            'form_update': form_update,
+            'base_template': base_template
+        }
+        return render(request, self.template_name, context)
+
+
+# @login_required
+# def update_password(request, id):
+#     # Identificamos al usuario autenticado 
+#     user = request.user
+#     user_type_value = user_type(request.user)
+#     base_template = template_base(user_type_value)
+#     if request.method == 'POST':
+#         # Formulario customizado password
+#         form_update = PasswordChangeForm(user, request.POST)
+#         # form_update.fields['username'].widget.attrs['diabled'] = True
+#         try:
+#             if form_update.is_valid():
+#                 form_update.save()
+#                 # Actualización de cookie del usuario
+#                 update_session_auth_hash(request, user)
+#                 messages.success(request, 'Contraseña actualizada exitosamente.') 
+#                 return redirect('update_password', id=id)
+#             else:
+#                 messages.error(request, 'Error al actualizar contraseña.')
+#         except IntegrityError:
+#             messages.error(request, 'Error de integridad.')
+
+#     else:
+#         form_update = PasswordChangeForm(user)
+#         # Deshabilitar edición del campo username
+#         # form_update.fields['username'].widget.attrs['disabled'] = True
         
-    return render(request, 'base/details/update_password.html', {
-        'user': user,
-        'form_update': form_update,
-        'base_template':base_template
-    })
+#     return render(request, 'base/details/update_password.html', {
+#         'user': user,
+#         'form_update': form_update,
+#         'base_template':base_template
+#     })
 
 
 
 
 # VIEWS CUSTOMERS (CLIENTES)
+
+
 # Decorador customer para que solo clientes puedan visualizar
+@method_decorator([login_required, customer_required], name='dispatch')
+class RegisterVehicleView(View):
+    template_name = 'customers/vehicle/register_vehicle.html'
+    form_class = VehicleForm
 
-
-@login_required
-@customer_required
-def register_vehicle(request):
-    if request.method == 'POST':
-        # print(request.POST)
-        form_vehicle = VehicleForm(request.POST)
-        # print("FORM : ", form_vehicle)
-        # try:
+    def get(self, request):
+        form_vehicle = self.form_class()
+        return render(request, self.template_name, {'form': form_vehicle})
+    
+    def post(self, request):
+        form_vehicle = self.form_class(request.POST)
         if form_vehicle.is_valid():
             vehicle = form_vehicle.save(commit=False)
-            vehicle.customer = request.user
-            # print("VEHICLE : ", vehicle)
+            vehicle.customer = request.user  # Asigna el usuario actual como propietario del vehículo
             vehicle.save()
             messages.success(request, 'Vehículo creado exitosamente.')
             return redirect('vehicle')
         else:
-            # print(form_vehicle.errors)
             messages.error(request, 'Error al registrar vehículo')
-        # except ValidationError as e:
-        #     messages.error(request, 'Error de ejecución')
-    else:
-        form_vehicle = VehicleForm()
+
+        return render(request, self.template_name, {'form': form_vehicle})
+
+
+# @login_required
+# @customer_required
+# def register_vehicle(request):
+#     if request.method == 'POST':
+#         # print(request.POST)
+#         form_vehicle = VehicleForm(request.POST)
+#         # print("FORM : ", form_vehicle)
+#         # try:
+#         if form_vehicle.is_valid():
+#             vehicle = form_vehicle.save(commit=False)
+#             vehicle.customer = request.user
+#             # print("VEHICLE : ", vehicle)
+#             vehicle.save()
+#             messages.success(request, 'Vehículo creado exitosamente.')
+#             return redirect('vehicle')
+#         else:
+#             # print(form_vehicle.errors)
+#             messages.error(request, 'Error al registrar vehículo')
+#         # except ValidationError as e:
+#         #     messages.error(request, 'Error de ejecución')
+#     else:
+#         form_vehicle = VehicleForm()
 
     
-    return render(request, 'customers/vehicle/register_vehicle.html', {
-        'form': form_vehicle
-    })
+#     return render(request, 'customers/vehicle/register_vehicle.html', {
+#         'form': form_vehicle
+#     })
 
 
 
+@method_decorator([login_required, customer_required], name='dispatch')
+class UpdateVehicleView(View):
+    template_name = 'customers/vehicle/update_vehicle.html'
+    form_class = VehicleForm
 
-@login_required
-@customer_required
-def update_vehicle(request, id):
-    vehicle = get_object_or_404(Vehicle, id=id, customer=request.user)
-    if request.method == 'POST':
-        form_vehicle = VehicleForm(request.POST, instance=vehicle)
+    def get_object(self, id, user):
+        return get_object_or_404(Vehicle, id=id, customer=user)
+
+    def get(self, request, id):
+        vehicle = self.get_object(id, request.user)
+        form_vehicle = self.form_class(instance=vehicle)
+        return render(request, self.template_name, {'form': form_vehicle})
+    
+    def post(self, request, id):
+        vehicle = self.get_object(id, request.user)
+        form_vehicle = self.form_class(request.POST, instance=vehicle)
         try:
             if form_vehicle.is_valid():
-                # vehicle = form_vehicle.save(commit=False)
-                # vehicle.customer = request.user
                 vehicle.save()
                 messages.success(request, 'Vehículo modificado exitosamente.')
                 return redirect('vehicle')
             else:
                 messages.error(request, 'Error al modificar vehículo')
-        except ValidationError as e:
+        except ValidationError:
             messages.error(request, 'Error de ejecución')
-    else:
-        # vehicle = Vehicle.objects.filter(id=id)
-        form_vehicle = VehicleForm(instance=vehicle)
+
+        return render(request, self.template_name, {'form': form_vehicle})
+    
+
+# @login_required
+# @customer_required
+# def update_vehicle(request, id):
+#     vehicle = get_object_or_404(Vehicle, id=id, customer=request.user)
+#     if request.method == 'POST':
+#         form_vehicle = VehicleForm(request.POST, instance=vehicle)
+#         try:
+#             if form_vehicle.is_valid():
+#                 # vehicle = form_vehicle.save(commit=False)
+#                 # vehicle.customer = request.user
+#                 vehicle.save()
+#                 messages.success(request, 'Vehículo modificado exitosamente.')
+#                 return redirect('vehicle')
+#             else:
+#                 messages.error(request, 'Error al modificar vehículo')
+#         except ValidationError as e:
+#             messages.error(request, 'Error de ejecución')
+#     else:
+#         # vehicle = Vehicle.objects.filter(id=id)
+#         form_vehicle = VehicleForm(instance=vehicle)
 
 
-    return render(request, 'customers/vehicle/update_vehicle.html', {
-        'form': form_vehicle
-    })
+#     return render(request, 'customers/vehicle/update_vehicle.html', {
+#         'form': form_vehicle
+#     })
 
 
 
-@login_required
-@customer_required
-def register_date(request):
-    error = ""
-    user = request.user  # Usuario Autenticado
-    # Obtener los vehículos del usuario logeado
-    user_vehicles = Vehicle.objects.filter(customer=user)
-    # try:
-    #     # Obtener los mecánicos disponibles
-    #     mechanic_active = Mechanic.objects.filter(is_active=True)
-    # except Mechanic.DoesNotExist:
-    #     mechanic_active = None
+@method_decorator([login_required, customer_required], name='dispatch')
+class RegisterDateView(View):
+    template_name = 'customers/appointment/register_date.html'
+    form_class = AppointmentForm
 
-    if request.method == 'POST':
-        form_appointment = AppointmentForm(request.POST, user=user) # , mechanic=mechanic_active
-        print(form_appointment)
-        print(form_appointment.is_valid())
-        if form_appointment.is_valid():
-            # Obtenemos los datos del formulario
-            # date_register = form_appointment.cleaned_data['date_register']
-            # attention = form_appointment.cleaned_data['attention']
-            # # mechanic = form_appointment.cleaned_data['mechanic']
+    def get_user_vehicles(self, user):
+        return Vehicle.objects.filter(customer=user)
 
-            # # Verifica si ya existe una cita en ese horario y fecha para el mecánico
-            # existing_appointment = Appointment.objects.filter(
-            #     attention=attention, date_register=date_register #, mechanic=mechanic
-            # ).exists()
+    def get(self, request):
+        user = request.user
+        user_vehicles = self.get_user_vehicles(user)
+        form_appointment = self.form_class(user=user)
 
-            # if existing_appointment:
-            #     # Error 
-            #     # error = f'El mecánico {mechanic}, ya tiene cita programada para fecha {date_register.strftime("%d-%m-%Y")} a las {attention}'
-            #     error = f'Ya existe cita programada para fecha {date_register.strftime("%d-%m-%Y")} a las {attention}'
-            #     # form_appointment.add_error(
-            #     #     'attention',
-            #     #     f'El mecánico {mechanic}, ya tiene cita programada para fecha {date_register} {attention}'
-            #     # )
-            #     messages.error(request, 'Error al crear cita')
-
-            # else:
-            form_appointment.save()
-            # Buscamos el id de la cita recien creada
-            latest_appointment = Appointment.objects.latest('id').id
-            id_appointment = Appointment.objects.get(id=latest_appointment)
-            id_appointment.inprogress = True
-            id_appointment.save()
-            # Creamos el trabajo y checklist con estado en espera
-            status = VehicleStatus.objects.get(pk=1)
-            job = Job.objects.create(appointment=id_appointment, status=status)
-            checklist = Checklist.objects.create(job=job)
-
-            messages.success(request, 'Cita confirmada') 
-            return redirect('appointment')
-        else:
-            # form_appointment = AppointmentForm()
-            print("ERROR EN EL FORM")
-            messages.error(request, 'Error al crear cita')
-
-    else:
-        # Filtro de vehiculos por usuario autenticado
-        # vehiculos_usuario = Vehiculo.objects.filter(cliente=user)
-        # form = CitaForm(vehiculo=vehiculos_usuario) 
-        
-        form_appointment = AppointmentForm(user=user) # , mechanic=mechanic_active
-        existing_appointment = False
+        # Desactiva el formulario si el usuario no tiene vehículos
         if not user_vehicles:
-            # Si el usuario no tiene vehiculos, el formulario se dehabilita
             for field in form_appointment.fields.values():
                 field.widget.attrs['disabled'] = True
+
+        context = {
+            'form': form_appointment,
+            'user_vehicles': user_vehicles
+        }
+        return render(request, self.template_name, context)
+
+    def post(self, request):
+        user = request.user
+        user_vehicles = self.get_user_vehicles(user)
+        form_appointment = self.form_class(request.POST, user=user)
+
+        if form_appointment.is_valid():
+            # Guarda la cita y asigna el estado de "in progress"
+            appointment = form_appointment.save(commit=False)
+            appointment.inprogress = True
+            appointment.save()
+
+            # Crea el trabajo y checklist asociados a la cita
+            status = VehicleStatus.objects.get(pk=1)
+            job = Job.objects.create(appointment=appointment, status=status)
+            checklist = Checklist.objects.create(job=job)
+
+            messages.success(request, 'Cita confirmada')
+            return redirect('appointment')
+        else:
+            messages.error(request, 'Error al crear cita')
+
+        context = {
+            'form': form_appointment,
+            'user_vehicles': user_vehicles
+        }
+        return render(request, self.template_name, context)
+
+# @login_required
+# @customer_required
+# def register_date(request):
+#     error = ""
+#     user = request.user  # Usuario Autenticado
+#     # Obtener los vehículos del usuario logeado
+#     user_vehicles = Vehicle.objects.filter(customer=user)
+#     # try:
+#     #     # Obtener los mecánicos disponibles
+#     #     mechanic_active = Mechanic.objects.filter(is_active=True)
+#     # except Mechanic.DoesNotExist:
+#     #     mechanic_active = None
+
+#     if request.method == 'POST':
+#         form_appointment = AppointmentForm(request.POST, user=user) # , mechanic=mechanic_active
+#         print(form_appointment)
+#         print(form_appointment.is_valid())
+#         if form_appointment.is_valid():
+#             # Obtenemos los datos del formulario
+#             # date_register = form_appointment.cleaned_data['date_register']
+#             # attention = form_appointment.cleaned_data['attention']
+#             # # mechanic = form_appointment.cleaned_data['mechanic']
+
+#             # # Verifica si ya existe una cita en ese horario y fecha para el mecánico
+#             # existing_appointment = Appointment.objects.filter(
+#             #     attention=attention, date_register=date_register #, mechanic=mechanic
+#             # ).exists()
+
+#             # if existing_appointment:
+#             #     # Error 
+#             #     # error = f'El mecánico {mechanic}, ya tiene cita programada para fecha {date_register.strftime("%d-%m-%Y")} a las {attention}'
+#             #     error = f'Ya existe cita programada para fecha {date_register.strftime("%d-%m-%Y")} a las {attention}'
+#             #     # form_appointment.add_error(
+#             #     #     'attention',
+#             #     #     f'El mecánico {mechanic}, ya tiene cita programada para fecha {date_register} {attention}'
+#             #     # )
+#             #     messages.error(request, 'Error al crear cita')
+
+#             # else:
+#             form_appointment.save()
+#             # Buscamos el id de la cita recien creada
+#             latest_appointment = Appointment.objects.latest('id').id
+#             id_appointment = Appointment.objects.get(id=latest_appointment)
+#             id_appointment.inprogress = True
+#             id_appointment.save()
+#             # Creamos el trabajo y checklist con estado en espera
+#             status = VehicleStatus.objects.get(pk=1)
+#             job = Job.objects.create(appointment=id_appointment, status=status)
+#             checklist = Checklist.objects.create(job=job)
+
+#             messages.success(request, 'Cita confirmada') 
+#             return redirect('appointment')
+#         else:
+#             # form_appointment = AppointmentForm()
+#             print("ERROR EN EL FORM")
+#             messages.error(request, 'Error al crear cita')
+
+#     else:
+#         # Filtro de vehiculos por usuario autenticado
+#         # vehiculos_usuario = Vehiculo.objects.filter(cliente=user)
+#         # form = CitaForm(vehiculo=vehiculos_usuario) 
+        
+#         form_appointment = AppointmentForm(user=user) # , mechanic=mechanic_active
+#         existing_appointment = False
+#         if not user_vehicles:
+#             # Si el usuario no tiene vehiculos, el formulario se dehabilita
+#             for field in form_appointment.fields.values():
+#                 field.widget.attrs['disabled'] = True
    
-    return render(request, 'customers/appointment/register_date.html', {
-        'form': form_appointment,
-        'user_vehicles': user_vehicles
-    })
+#     return render(request, 'customers/appointment/register_date.html', {
+#         'form': form_appointment,
+#         'user_vehicles': user_vehicles
+#     })
 
 
 
-@login_required
-@customer_required
-def create_coupon_points(request):
-    points = get_object_or_404(Point, customer=request.user)
-    try:
-        # Se crea un cupon, restando la cantidad que tiene el cliente por la constante de PUNTOS
-        points.points -= POINTS_VALUE
-        points.save()
-        # Se crea cupón con función staticmethod desde el mismo modelo
-        new_coupon = Coupon(customer=request.user, coupon=Coupon.generate_coupon_code())
-        new_coupon.save()
-        messages.success(request, "Cupón creado exitosamente.")
-        return redirect('user_data')
-    except:
-        messages.error(request, "No se ha podido crear el cupón.")
+@method_decorator([login_required, customer_required], name='dispatch')
+class CreateCouponPointsView(View):
+    def post(self, request):
+        points = get_object_or_404(Point, customer=request.user)
+        try:
+            # Restamos los puntos necesarios para crear el cupón
+            points.points -= POINTS_VALUE
+            points.save()
+            # Generamos y guardamos el cupón
+            new_coupon = Coupon(customer=request.user, coupon=Coupon.generate_coupon_code())
+            new_coupon.save()
+            messages.success(request, "Cupón creado exitosamente.")
+            return redirect('user_data')
+        except Exception:
+            messages.error(request, "No se ha podido crear el cupón.")
+            return redirect('user_data')
+        
+
+# @login_required
+# @customer_required
+# def create_coupon_points(request):
+#     points = get_object_or_404(Point, customer=request.user)
+#     try:
+#         # Se crea un cupon, restando la cantidad que tiene el cliente por la constante de PUNTOS
+#         points.points -= POINTS_VALUE
+#         points.save()
+#         # Se crea cupón con función staticmethod desde el mismo modelo
+#         new_coupon = Coupon(customer=request.user, coupon=Coupon.generate_coupon_code())
+#         new_coupon.save()
+#         messages.success(request, "Cupón creado exitosamente.")
+#         return redirect('user_data')
+#     except:
+#         messages.error(request, "No se ha podido crear el cupón.")
 
 
-@login_required
-@customer_required
-def delete_coupon(request, id):
-    coupon = get_object_or_404(Coupon, id=id, customer=request.user)
-    if request.method == 'POST':
+
+@method_decorator([login_required, customer_required], name='dispatch')
+class DeleteCouponView(View):
+    def post(self, request, id):
+        coupon = get_object_or_404(Coupon, id=id, customer=request.user)
         coupon.delete()
         messages.success(request, "Cupón eliminado exitosamente.")
         return redirect('user_data')
     
 
-@login_required
-@customer_required
-def list_vehicles(request):
-    # Además de obtener los objetos vehiculos segun el id del usuario logeado
-    # Debe traer todas las citas relacionadas a ese idvehiculo, ademas dentro de cada cita
-    # agregar cada trabajo relacionado
-    vehicles = Vehicle.objects.filter(customer=request.user).prefetch_related('appointment_set__job_set')
-    job = Job.objects.all()
-    error = 'No tiene vehículos'
-    return render(request, 'customers/vehicle/vehicle.html', {
-        'list_vehicle': vehicles,
-        'error': error,
-        'job': job
-    })
+# @login_required
+# @customer_required
+# def delete_coupon(request, id):
+#     coupon = get_object_or_404(Coupon, id=id, customer=request.user)
+#     if request.method == 'POST':
+#         coupon.delete()
+#         messages.success(request, "Cupón eliminado exitosamente.")
+#         return redirect('user_data')
+    
 
-@login_required
-@customer_required
-def delete_vehicle(request, id):
-    vehicle = get_object_or_404(Vehicle, pk=id, customer=request.user)
-    if request.method == 'POST':
-        # Se cambia el valor a inactivo
-        vehicle.is_active = False
+@method_decorator([login_required, customer_required], name='dispatch')
+class ListVehiclesView(View):
+    template_name = 'customers/vehicle/vehicle.html'
+
+    def get(self, request):
+        # Obtener los vehículos del usuario logueado y sus citas relacionadas
+        vehicles = Vehicle.objects.filter(customer=request.user).prefetch_related('appointment_set__job_set')
+        job = Job.objects.all()  # (Si es necesario obtener todos los trabajos)
+        error = 'No tiene vehículos' if not vehicles.exists() else None
+
+        context = {
+            'list_vehicle': vehicles,
+            'error': error,
+            'job': job
+        }
+        return render(request, self.template_name, context)
+    
+# @login_required
+# @customer_required
+# def list_vehicles(request):
+#     # Además de obtener los objetos vehiculos segun el id del usuario logeado
+#     # Debe traer todas las citas relacionadas a ese idvehiculo, ademas dentro de cada cita
+#     # agregar cada trabajo relacionado
+#     vehicles = Vehicle.objects.filter(customer=request.user).prefetch_related('appointment_set__job_set')
+#     job = Job.objects.all()
+#     error = 'No tiene vehículos'
+#     return render(request, 'customers/vehicle/vehicle.html', {
+#         'list_vehicle': vehicles,
+#         'error': error,
+#         'job': job
+#     })
+
+
+@method_decorator([login_required, customer_required], name='dispatch')
+class DeleteVehicleView(View):
+    def post(self, request, id):
+        vehicle = get_object_or_404(Vehicle, pk=id, customer=request.user)
+        vehicle.is_active = False  # Cambiar el estado a inactivo
         vehicle.save()
         messages.success(request, "Vehículo eliminado con éxito.")
         return redirect('vehicle')
+    
+# @login_required
+# @customer_required
+# def delete_vehicle(request, id):
+#     vehicle = get_object_or_404(Vehicle, pk=id, customer=request.user)
+#     if request.method == 'POST':
+#         # Se cambia el valor a inactivo
+#         vehicle.is_active = False
+#         vehicle.save()
+#         messages.success(request, "Vehículo eliminado con éxito.")
+#         return redirect('vehicle')
 
 
-@login_required
-def state_vehicle(request, id):
-    user_type_value = user_type(request.user)
-    base_template = template_base(user_type_value)
-    earn_points = 0
-    total_price = 0
-    estimated_total_price = 0
-    # vehicles = Vehicle.objects.filter(pk=id, customer=request.user)
-    # state_vehicle = Job.objects.filter(job_appointment_vehicle_id=id)
-    # state_vehicle = get_object_or_404(Appointment, pk=id, vehicle__customer=request.user)
 
-    # Instancias de estado de vehículo por su id
-    state_vehicle = get_object_or_404(Job, appointment_id=id)
-    services = state_vehicle.work_set.all()
-    appointment = get_object_or_404(Appointment, pk=id)
-    user = appointment.vehicle.customer
-    points = Point.objects.get(customer=user)
-    for service in services:
-        # Si un servicio se marco como realizado, Se itera por cada servicio en True,  
-        # para calcular el precio total y la cantidad de puntos ganador por serivicio
-        if service.status_service == True:
-            total_price += service.service.price
-            earn_points += service.service.earn_points
-        # En caso de que servicio no se haya realizado, si cuenta para obtener el precio estimativo de todo el servicio completo
-        if service.status_service == False or service.status_service == True:
+@method_decorator(login_required, name='dispatch')
+class StateVehicleView(View):
+    template_name = 'customers/vehicle/state_vehicle.html'
+
+    def get(self, request, id):
+        user_type_value = user_type(request.user)
+        base_template = template_base(user_type_value)
+        earn_points = 0
+        total_price = 0
+        estimated_total_price = 0
+
+        # Obtén el estado del vehículo
+        state_vehicle = get_object_or_404(Job, appointment_id=id)
+        services = state_vehicle.work_set.all()
+        
+        # Obtén la cita y el usuario relacionado con el vehículo
+        appointment = get_object_or_404(Appointment, pk=id)
+        user = appointment.vehicle.customer
+        points = Point.objects.get(customer=user)
+
+        # Calcula el precio total, puntos ganados y precio estimado
+        for service in services:
+            if service.status_service:  # Si el servicio fue realizado
+                total_price += service.service.price
+                earn_points += service.service.earn_points
+            # Agregar al precio estimado incluso si el servicio no ha sido realizado
             estimated_total_price += service.service.price
 
-    error =  'No tiene vehículos'
-    return render(request, 'customers/vehicle/state_vehicle.html', {
-        # 'list_vehicle':vehicles,
-        'base_template':base_template,
-        'state_vehicle':state_vehicle,
-        'services':services,
-        'total_price':total_price,
-        'estimated_total_price':estimated_total_price,
-        'points':points,
-        'earn_points':earn_points,
-        'POINTS': POINTS_VALUE,
-        'error':error
-    })
+        error = 'No tiene vehículos' if not services else None
+
+        context = {
+            'base_template': base_template,
+            'state_vehicle': state_vehicle,
+            'services': services,
+            'total_price': total_price,
+            'estimated_total_price': estimated_total_price,
+            'points': points,
+            'earn_points': earn_points,
+            'POINTS': POINTS_VALUE,
+            'error': error,
+        }
+
+        return render(request, self.template_name, context)
+    
+
+# @login_required
+# def state_vehicle(request, id):
+#     user_type_value = user_type(request.user)
+#     base_template = template_base(user_type_value)
+#     earn_points = 0
+#     total_price = 0
+#     estimated_total_price = 0
+#     # vehicles = Vehicle.objects.filter(pk=id, customer=request.user)
+#     # state_vehicle = Job.objects.filter(job_appointment_vehicle_id=id)
+#     # state_vehicle = get_object_or_404(Appointment, pk=id, vehicle__customer=request.user)
+
+#     # Instancias de estado de vehículo por su id
+#     state_vehicle = get_object_or_404(Job, appointment_id=id)
+#     services = state_vehicle.work_set.all()
+#     appointment = get_object_or_404(Appointment, pk=id)
+#     user = appointment.vehicle.customer
+#     points = Point.objects.get(customer=user)
+#     for service in services:
+#         # Si un servicio se marco como realizado, Se itera por cada servicio en True,  
+#         # para calcular el precio total y la cantidad de puntos ganador por serivicio
+#         if service.status_service == True:
+#             total_price += service.service.price
+#             earn_points += service.service.earn_points
+#         # En caso de que servicio no se haya realizado, si cuenta para obtener el precio estimativo de todo el servicio completo
+#         if service.status_service == False or service.status_service == True:
+#             estimated_total_price += service.service.price
+
+#     error =  'No tiene vehículos'
+#     return render(request, 'customers/vehicle/state_vehicle.html', {
+#         # 'list_vehicle':vehicles,
+#         'base_template':base_template,
+#         'state_vehicle':state_vehicle,
+#         'services':services,
+#         'total_price':total_price,
+#         'estimated_total_price':estimated_total_price,
+#         'points':points,
+#         'earn_points':earn_points,
+#         'POINTS': POINTS_VALUE,
+#         'error':error
+#     })
 
 
-@login_required
-@customer_required
-def list_appointment(request):
-    date = Appointment.objects.filter(vehicle__customer=request.user)
-    error =  'No tiene citas'
-    return render(request, 'customers/appointment/appointment.html', {
-        'list_dates':date,
-        'error':error
-    })
+
+@method_decorator([login_required, customer_required], name='dispatch')
+class ListAppointmentView(View):
+    template_name = 'customers/appointment/appointment.html'
+
+    def get(self, request):
+        # Obtener las citas del usuario autenticado
+        appointments = Appointment.objects.filter(vehicle__customer=request.user)
+        error = 'No tiene citas' if not appointments.exists() else None
+
+        context = {
+            'list_dates': appointments,
+            'error': error
+        }
+        return render(request, self.template_name, context)
+    
+
+# @login_required
+# @customer_required
+# def list_appointment(request):
+#     date = Appointment.objects.filter(vehicle__customer=request.user)
+#     error =  'No tiene citas'
+#     return render(request, 'customers/appointment/appointment.html', {
+#         'list_dates':date,
+#         'error':error
+#     })
 
 
 
-@login_required
-@customer_required
-def cancel_appointment(request, id):
-    appointment = get_object_or_404(Appointment, pk=id, vehicle__customer=request.user)
-    if request.method == 'POST': 
-        # Se cambia el estado a "Cancelado"
-        status = VehicleStatus.objects.get(pk=8)
+@method_decorator([login_required, customer_required], name='dispatch')
+class CancelAppointmentView(View):
+    def post(self, request, id):
+        # Obtiene la cita y el trabajo relacionado
+        appointment = get_object_or_404(Appointment, pk=id, vehicle__customer=request.user)
         job = get_object_or_404(Job, appointment=appointment)
+
+        # Cambia el estado del trabajo a "Cancelado" y registra la fecha de finalización de la cita
+        status = VehicleStatus.objects.get(pk=8)
         job.status = status
         appointment.date_finished = timezone.now()
 
+        # Guarda los cambios
         job.save()
         appointment.save()
 
         messages.success(request, "Cita cancelada con éxito.")
         return redirect('appointment')
+    
+
+# @login_required
+# @customer_required
+# def cancel_appointment(request, id):
+#     appointment = get_object_or_404(Appointment, pk=id, vehicle__customer=request.user)
+#     if request.method == 'POST': 
+#         # Se cambia el estado a "Cancelado"
+#         status = VehicleStatus.objects.get(pk=8)
+#         job = get_object_or_404(Job, appointment=appointment)
+#         job.status = status
+#         appointment.date_finished = timezone.now()
+
+#         job.save()
+#         appointment.save()
+
+#         messages.success(request, "Cita cancelada con éxito.")
+#         return redirect('appointment')
 
 
 
